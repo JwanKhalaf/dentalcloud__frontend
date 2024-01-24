@@ -1,17 +1,26 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, text)
-import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
+import Browser.Navigation as Nav
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Url
 
 
 
 -- MAIN
 
 
+main : Program () Model Msg
 main =
-    Browser.sandbox { init = init, update = update, view = view }
+  Browser.application
+    { init = init
+    , view = view
+    , update = update
+    , subscriptions = subscriptions
+    , onUrlChange = UrlChanged
+    , onUrlRequest = LinkClicked
+    }
 
 
 
@@ -19,12 +28,14 @@ main =
 
 
 type alias Model =
-    Int
+  { key : Nav.Key
+  , url : Url.Url
+  }
 
 
-init : Model
-init =
-    0
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
+  ( Model key url, Cmd.none )
 
 
 
@@ -32,28 +43,60 @@ init =
 
 
 type Msg
-    = Increment
-    | Decrement
+  = LinkClicked Browser.UrlRequest
+  | UrlChanged Url.Url
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        Increment ->
-            model + 1
+  case msg of
+    LinkClicked urlRequest ->
+      case urlRequest of
+        Browser.Internal url ->
+          ( model, Nav.pushUrl model.key (Url.toString url) )
 
-        Decrement ->
-            model - 1
+        Browser.External href ->
+          ( model, Nav.load href )
+
+    UrlChanged url ->
+      ( { model | url = url }
+      , Cmd.none
+      )
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+  Sub.none
 
 
 
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    div []
-        [ button [ class "bg-red-500 text-xl", onClick Decrement ] [ text "-" ]
-        , div [] [ text (String.fromInt model) ]
-        , button [ onClick Increment ] [ text "+" ]
-        ]
+  { title = "DentalCloud"
+  , body =
+      [
+        div [] [
+        text "The current URL is: "
+        , b [] [ text (Url.toString model.url) ]
+        , ul []
+            [ viewLink "/home"
+            , viewLink "/profile"
+            , viewLink "/reviews/the-century-of-the-self"
+            , viewLink "/reviews/public-opinion"
+            , viewLink "/reviews/shah-of-shahs"
+            ]
+            ]
+      ]
+  }
+
+
+viewLink : String -> Html msg
+viewLink path =
+  li [] [ a [ href path ] [ text path ] ]
