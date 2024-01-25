@@ -13,14 +13,14 @@ import Url
 
 main : Program () Model Msg
 main =
-  Browser.application
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    , onUrlChange = UrlChanged
-    , onUrlRequest = LinkClicked
-    }
+    Browser.application
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
+        }
 
 
 
@@ -28,14 +28,14 @@ main =
 
 
 type alias Model =
-  { key : Nav.Key
-  , url : Url.Url
-  }
+    { key : Nav.Key
+    , url : Url.Url
+    }
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
-  ( Model key url, Cmd.none )
+    ( Model key url, Cmd.none )
 
 
 
@@ -43,25 +43,25 @@ init flags url key =
 
 
 type Msg
-  = LinkClicked Browser.UrlRequest
-  | UrlChanged Url.Url
+    = LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
-    LinkClicked urlRequest ->
-      case urlRequest of
-        Browser.Internal url ->
-          ( model, Nav.pushUrl model.key (Url.toString url) )
+    case msg of
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
 
-        Browser.External href ->
-          ( model, Nav.load href )
+                Browser.External href ->
+                    ( model, Nav.load href )
 
-    UrlChanged url ->
-      ( { model | url = url }
-      , Cmd.none
-      )
+        UrlChanged url ->
+            ( { model | url = url }
+            , Cmd.none
+            )
 
 
 
@@ -70,7 +70,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-  Sub.none
+    Sub.none
 
 
 
@@ -79,24 +79,29 @@ subscriptions _ =
 
 view : Model -> Browser.Document Msg
 view model =
-  { title = "DentalCloud"
-  , body =
-      [
-        div [] [
-        text "The current URL is: "
-        , b [] [ text (Url.toString model.url) ]
-        , ul []
-            [ viewLink "/home"
-            , viewLink "/profile"
-            , viewLink "/reviews/the-century-of-the-self"
-            , viewLink "/reviews/public-opinion"
-            , viewLink "/reviews/shah-of-shahs"
+    { title = "DentalCloud"
+    , body =
+        [ aside [ class "w-[280px] flex-none flex flex-col px-4 pt-8 border-r border-gray-200" ]
+            [ nav []
+                [ ul []
+                    [ sidebarLink "Home" "fa-house" "/"
+                    , sidebarLink "Calendar" "fa-calendar" "/calendar"
+                    ]
+                ]
             ]
+        , Html.main_ []
+            [ text "Hello from "
+            , b [] [ text (Url.toString model.url) ]
             ]
-      ]
-  }
+        ]
+    }
 
 
-viewLink : String -> Html msg
-viewLink path =
-  li [] [ a [ href path ] [ text path ] ]
+sidebarLink : String -> String -> String -> Html msg
+sidebarLink linktext icon path =
+    li [ class "group mb-1" ]
+        [ a [ href path, class "flex items-center gap-2 group-hover:text-primary-700 group-hover:bg-primary-50 text-gray-700 font-semibold text-base px-3 py-2 rounded-md" ]
+            [ i [ class ("fa-regular " ++ icon) ] []
+            , text linktext
+            ]
+        ]
