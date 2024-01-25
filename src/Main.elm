@@ -4,6 +4,10 @@ import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Page.Calendar
+import Page.Home
+import Page.NotFound
+import Route exposing (Route)
 import Url
 
 
@@ -27,15 +31,52 @@ main =
 -- MODEL
 
 
+type alias Preferences =
+    Bool
+
+
+type alias PagesState =
+    { calendar : Page.Calendar.Model
+    }
+
+
 type alias Model =
-    { key : Nav.Key
+    { navKey : Nav.Key
     , url : Url.Url
+    , route : Maybe Route
+    , preferences : Preferences
+    , pagesState : PagesState
     }
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
-    ( Model key url, Cmd.none )
+init _ url navKey =
+    let
+        ( pagesState, cmd ) =
+            pagesInit
+    in
+    ( { navKey = navKey
+      , url = url
+      , route = Route.fromUrl url
+      , preferences = True
+      , pagesState = pagesState
+      }
+    , cmd
+    )
+
+
+pagesInit : ( PagesState, Cmd Msg )
+pagesInit =
+    let
+        ( counterModel, counterCmd ) =
+            Page.Calendar.init
+
+        cmd =
+            Cmd.batch [ Cmd.map GotCalendarMsg counterCmd ]
+    in
+    ( { calendar = counterModel }
+    , cmd
+    )
 
 
 
@@ -45,6 +86,7 @@ init flags url key =
 type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
+    | GotCalendarMsg Page.Calendar.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -53,15 +95,39 @@ update msg model =
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( model, Nav.pushUrl model.key (Url.toString url) )
+                    ( model
+                    , Nav.pushUrl model.navKey (Url.toString url)
+                    )
 
                 Browser.External href ->
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | url = url }
-            , Cmd.none
-            )
+            ( { model | url = url, route = Route.fromUrl url }, Cmd.none )
+
+        GotCalendarMsg subMsg ->
+            updateCounter model subMsg
+
+
+updateCounter : Model -> Page.Calendar.Msg -> ( Model, Cmd Msg )
+updateCounter model subMsg =
+    let
+        pageModels =
+            model.pagesState
+
+        previousPageModel =
+            pageModels.calendar
+
+        ( newPageModel, pageCmd ) =
+            Page.Calendar.update subMsg previousPageModel
+
+        newPages =
+            { pageModels | calendar = newPageModel }
+
+        newModel =
+            { model | pagesState = newPages }
+    in
+    ( newModel, Cmd.map GotCalendarMsg pageCmd )
 
 
 
@@ -79,48 +145,70 @@ subscriptions _ =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "DentalCloud"
+    let
+        ( pageTitel, pageContent ) =
+            pageView model
+    in
+    { title = pageTitel
     , body =
-        [ aside [ class "w-[280px] flex-none flex flex-col px-4 pt-8 border-r border-gray-200" ]
+        [ aside [ class "w-[312px] flex-none flex flex-col px-4 pt-8 border-r border-gray-200" ]
             [ nav []
                 [ ul []
-                    [ sidebarLink "Home" "fa-house" "/"
-                    , sidebarLink "Calendar" "fa-calendar" "/calendar"
+                    [ sidebarLink "Home" "fa-house" model.route Route.Home
+                    , sidebarLink "Calendar" "fa-calendar" model.route Route.Calendar
                     ]
                 ]
             ]
-        , main_ [ class "pt-8 px-8 w-full" ]
-            [ div [ class "mb-5" ]
-                [ div [ class "flex items-center" ]
-                    [ i [ class "fa-regular fa-house" ] []
-                    ]
-                ]
-            , div [ class "mb-6" ]
-                [ h1 [ class "font-inter text-gray-900 text-3xl font-semibold mb-1" ] [ text "Welcome Dr. Olivia" ]
-                , p [ class "text-gray-600 text-base font-normal" ] [ text "Below is an overview of things" ]
-                ]
-            , div [ class "mb-6 flex" ]
-                [ div [ class "rounded-xl p-6 mr-6 shadow-sm" ]
-                    [ h3 [ class "text-sm font-medium text-gray-600 mb-2" ] [ text "Today's appointments" ]
-                    , span [ class "text-3xl text-gray-900" ] [ text "4" ]
-                    ]
-                , div [ class "rounded-xl p-6 shadow-sm" ]
-                    [ h3 [ class "text-sm font-medium text-gray-600 mb-2" ] [ text "Daily private grossing" ]
-                    , span [ class "text-3xl text-gray-900" ] [ text "£350" ]
-                    ]
-                ]
-            , text "Hello from "
-            , b [] [ text (Url.toString model.url) ]
-            ]
+        , main_ [] [ pageContent ]
         ]
     }
 
 
-sidebarLink : String -> String -> String -> Html msg
-sidebarLink linktext icon path =
+pageView : Model -> ( String, Html Msg )
+pageView model =
+    case model.route of
+        Nothing ->
+            Page.NotFound.view
+
+        Just Route.Home ->
+            Page.Home.view
+
+        Just Route.Calendar ->
+            let
+                ( title, content ) =
+                    Page.Calendar.view model.pagesState.calendar
+            in
+            ( title, Html.map GotCalendarMsg content )
+
+
+sidebarLink : String -> String -> Maybe Route -> Route -> Html msg
+sidebarLink linktext icon activeRoute targetRoute =
     li [ class "group mb-1" ]
-        [ a [ href path, class "flex items-center gap-2 group-hover:text-primary-700 group-hover:bg-primary-50 text-gray-700 font-semibold text-base px-3 py-2 rounded-md" ]
+        [ a [ href (Route.toUrl targetRoute), class (sidebarLinkCss (isActivePage activeRoute targetRoute)) ]
             [ i [ class ("fa-regular " ++ icon) ] []
             , text linktext
             ]
         ]
+
+
+isActivePage : Maybe Route -> Route -> Bool
+isActivePage activeRoute targetRoute =
+    case activeRoute of
+        Nothing ->
+            False
+
+        Just r ->
+            if r == targetRoute then
+                True
+
+            else
+                False
+
+
+sidebarLinkCss : Bool -> String
+sidebarLinkCss isActive =
+    if isActive then
+        "flex items-center gap-2 group-hover:text-primary-700 group-hover:bg-primary-50 text-gray-700 font-semibold text-base px-3 py-2 rounded-md text-primary-700 bg-primary-50"
+
+    else
+        "flex items-center gap-2 group-hover:text-primary-700 group-hover:bg-primary-50 text-gray-700 font-semibold text-base px-3 py-2 rounded-md"
