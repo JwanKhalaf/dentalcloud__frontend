@@ -1,9 +1,11 @@
 module Main exposing (..)
 
 import Browser
+import Browser.Events exposing (onKeyPress)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Json.Decode as Decode
 import Page.Calendar
 import Page.Home
 import Page.NotFound
@@ -84,9 +86,11 @@ pagesInit =
 
 
 type Msg
-    = LinkClicked Browser.UrlRequest
+    = NoOp
+    | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | GotCalendarMsg Page.Calendar.Msg
+    | ShowSearch
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -107,6 +111,12 @@ update msg model =
 
         GotCalendarMsg subMsg ->
             updateCounter model subMsg
+
+        ShowSearch ->
+            ( model, Cmd.none )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 updateCounter : Model -> Page.Calendar.Msg -> ( Model, Cmd Msg )
@@ -134,9 +144,23 @@ updateCounter model subMsg =
 -- SUBSCRIPTIONS
 
 
+keyPressDecoder : Decode.Decoder Msg
+keyPressDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.map
+            (\key ->
+                case String.toUpper key of
+                    "W" ->
+                        ShowSearch
+
+                    _ ->
+                        NoOp
+            )
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    onKeyPress keyPressDecoder
 
 
 
@@ -160,6 +184,19 @@ view model =
                 ]
             ]
         , main_ [] [ pageContent ]
+        , div [ class "absolute w-1/3 bg-white border-0 rounded-lg focus-visible:ring-0 focus-visible:shadow-none shadow-xl opacity-100" ]
+            [ label [ class "relative block border-b border-gray-300" ]
+                [ span [ class "sr-only" ] [ text "search" ]
+                , span [ class "absolute inset-y-0 left-0 flex items-center pl-3.5" ]
+                    [ i [ class "fa-regular fa-search" ] []
+                    ]
+                , span [ class "absolute inset-y-0 ring-0 flex items-center pr-3.5 text-gray-500 font-semibold" ]
+                    []
+                , input
+                    [ class "w-full h-16 border-0 rounded-lg focus:ring-0 placeholder:text-gray-500 placeholder:text-base placeholder:font-normal px-11", type_ "text", name "search", placeholder "Search" ]
+                    []
+                ]
+            ]
         ]
     }
 
