@@ -146,16 +146,16 @@ updateCounter model subMsg =
 
 keyPressDecoder : Decode.Decoder Msg
 keyPressDecoder =
-    Decode.field "key" Decode.string
-        |> Decode.map
-            (\key ->
-                case String.toUpper key of
-                    "W" ->
-                        ShowSearch
+    Decode.map2
+        (\key control ->
+            if key == "q" && control then
+                ShowSearch
 
-                    _ ->
-                        NoOp
-            )
+            else
+                NoOp
+        )
+        (Decode.field "key" Decode.string)
+        (Decode.field "ctrlKey" Decode.bool)
 
 
 subscriptions : Model -> Sub Msg
