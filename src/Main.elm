@@ -1,7 +1,6 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
-import Browser.Events exposing (onKeyPress)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -27,6 +26,13 @@ main =
         , onUrlChange = UrlChanged
         , onUrlRequest = LinkClicked
         }
+
+
+
+-- PORTS
+
+
+port showSearch : (() -> msg) -> Sub msg
 
 
 
@@ -160,7 +166,7 @@ keyPressDecoder =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    onKeyPress keyPressDecoder
+    showSearch (\() -> ShowSearch)
 
 
 
