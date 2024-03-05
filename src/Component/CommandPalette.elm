@@ -1,15 +1,22 @@
-module Component.CommandPalette exposing (view)
+module Component.CommandPalette exposing (focusSearchBox, view)
 
+import Browser.Dom as Dom
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Svg exposing (..)
 import Svg.Attributes as SvgAttr exposing (..)
+import Task
 
 
 view : Html msg
 view =
     commandPaletteView
+
+
+focusSearchBox : { onFocus : Result Dom.Error () -> msg } -> Cmd msg
+focusSearchBox { onFocus } =
+    Task.attempt onFocus (Dom.focus "search-box")
 
 
 commandPaletteView : Html msg
@@ -52,6 +59,7 @@ commandPaletteView =
                         , Attr.attribute "role" "combobox"
                         , Attr.attribute "aria-expanded" "false"
                         , Attr.attribute "aria-controls" "options"
+                        , Attr.id "search-box"
                         ]
                         []
                     ]

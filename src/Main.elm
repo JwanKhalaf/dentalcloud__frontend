@@ -5,6 +5,7 @@ import Browser.Navigation as Nav
 import Component.CommandPalette
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onFocus)
 import Page.Calendar
 import Page.Home
 import Page.NotFound
@@ -130,7 +131,7 @@ update msg model =
                     model
             in
             ( { model | pagesState = { pagesState | showCommandCentre = True } }
-            , Cmd.none
+            , Component.CommandPalette.focusSearchBox { onFocus = \_ -> NoOp }
             )
 
         HideCommandCentre ->
