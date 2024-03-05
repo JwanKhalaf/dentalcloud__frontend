@@ -2,12 +2,13 @@ port module Main exposing (..)
 
 import Browser
 import Browser.Navigation as Nav
+import Component.CommandPalette
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Json.Decode as Decode
 import Page.Calendar
 import Page.Home
 import Page.NotFound
+import Platform.Cmd as Cmd
 import Route exposing (Route)
 import Url
 
@@ -32,7 +33,10 @@ main =
 -- PORTS
 
 
-port showSearch : (() -> msg) -> Sub msg
+port showCommandCentre : (() -> msg) -> Sub msg
+
+
+port hideCommandCentre : (() -> msg) -> Sub msg
 
 
 
@@ -45,6 +49,7 @@ type alias Preferences =
 
 type alias PagesState =
     { calendar : Page.Calendar.Model
+    , showCommandCentre : Bool
     }
 
 
@@ -82,7 +87,7 @@ pagesInit =
         cmd =
             Cmd.batch [ Cmd.map GotCalendarMsg counterCmd ]
     in
-    ( { calendar = counterModel }
+    ( { calendar = counterModel, showCommandCentre = False }
     , cmd
     )
 
@@ -96,7 +101,8 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | GotCalendarMsg Page.Calendar.Msg
-    | ShowSearch
+    | ShowCommandCentre
+    | HideCommandCentre
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -118,8 +124,23 @@ update msg model =
         GotCalendarMsg subMsg ->
             updateCounter model subMsg
 
-        ShowSearch ->
-            ( model, Cmd.none )
+        ShowCommandCentre ->
+            let
+                { pagesState } =
+                    model
+            in
+            ( { model | pagesState = { pagesState | showCommandCentre = True } }
+            , Cmd.none
+            )
+
+        HideCommandCentre ->
+            let
+                { pagesState } =
+                    model
+            in
+            ( { model | pagesState = { pagesState | showCommandCentre = False } }
+            , Cmd.none
+            )
 
         NoOp ->
             ( model, Cmd.none )
@@ -150,23 +171,12 @@ updateCounter model subMsg =
 -- SUBSCRIPTIONS
 
 
-keyPressDecoder : Decode.Decoder Msg
-keyPressDecoder =
-    Decode.map2
-        (\key control ->
-            if key == "q" && control then
-                ShowSearch
-
-            else
-                NoOp
-        )
-        (Decode.field "key" Decode.string)
-        (Decode.field "ctrlKey" Decode.bool)
-
-
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    showSearch (\() -> ShowSearch)
+    Sub.batch
+        [ showCommandCentre (\() -> ShowCommandCentre)
+        , hideCommandCentre (\() -> HideCommandCentre)
+        ]
 
 
 
@@ -190,19 +200,11 @@ view model =
                 ]
             ]
         , main_ [] [ pageContent ]
-        , div [ class "absolute w-1/3 bg-white border-0 rounded-lg focus-visible:ring-0 focus-visible:shadow-none shadow-xl opacity-100" ]
-            [ label [ class "relative block border-b border-gray-300" ]
-                [ span [ class "sr-only" ] [ text "search" ]
-                , span [ class "absolute inset-y-0 left-0 flex items-center pl-3.5" ]
-                    [ i [ class "fa-regular fa-search" ] []
-                    ]
-                , span [ class "absolute inset-y-0 ring-0 flex items-center pr-3.5 text-gray-500 font-semibold" ]
-                    []
-                , input
-                    [ class "w-full h-16 border-0 rounded-lg focus:ring-0 placeholder:text-gray-500 placeholder:text-base placeholder:font-normal px-11", type_ "text", name "search", placeholder "Search" ]
-                    []
-                ]
-            ]
+        , if model.pagesState.showCommandCentre then
+            Component.CommandPalette.view
+
+          else
+            text ""
         ]
     }
 
